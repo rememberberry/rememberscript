@@ -3,15 +3,20 @@ import pytest
 import os
 from rememberscript import RememberMachine, load_scripts_dir, validate_script
 
-@pytest.mark.asyncio
-async def test_bot1():
-    """Test a simple login script"""
-    path = os.path.join(os.path.dirname(__file__), 'scripts/script1/')
+def get_machine(name):
+    path = os.path.join(os.path.dirname(__file__), 'scripts/%s/' % name)
     storage = {}
     script = load_scripts_dir(path, storage)
     validate_script(script)
     m = RememberMachine(script, storage)
     m.init()
+    return m
+
+@pytest.mark.asyncio
+async def test_bot1():
+    """Test a simple login script"""
+    storage = {}
+    m = get_machine('script1')
     assert len(m._get_triggers()) == 4
 
     replies = m.reply('')
@@ -32,15 +37,27 @@ async def test_bot1():
 @pytest.mark.asyncio
 async def test_weight():
     """Test trigger weights"""
-    path = os.path.join(os.path.dirname(__file__), 'scripts/script2/')
     storage = {}
-    script = load_scripts_dir(path, storage)
-    validate_script(script)
-    m = RememberMachine(script, storage)
-    m.init()
+    m = get_machine('script2')
     assert len(m._get_triggers()) == 2
 
     replies = m.reply('')
     assert await replies.__anext__() == 'state2'
+    with pytest.raises(StopAsyncIteration):
+        await replies.__anext__()
+
+@pytest.mark.asyncio
+async def test_next_prev():
+    """Test trigger to next"""
+    storage = {}
+    m = get_machine('script3')
+
+    replies = m.reply('')
+    assert await replies.__anext__() == 'state1'
+    with pytest.raises(StopAsyncIteration):
+        await replies.__anext__()
+
+    replies = m.reply('')
+    assert await replies.__anext__() == 'to init'
     with pytest.raises(StopAsyncIteration):
         await replies.__anext__()

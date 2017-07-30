@@ -38,9 +38,9 @@ class RememberMachine:
             async for msg in self._evaluate_action(action):
                 yield msg
 
-        weights = [(await self._evaluate_trigger(t, msg), *rest) 
+        transitions = [(await self._evaluate_trigger(t, msg), *rest) 
                        for t, *rest in self._get_triggers()]
-        _, next_state, transition_actions = max(weights, key=lambda x: x[0])
+        _, next_state, transition_actions = max(transitions, key=lambda x: x[0])
         for action in transition_actions:
             async for msg in self._evaluate_action(action):
                 yield msg
@@ -51,6 +51,16 @@ class RememberMachine:
                 yield msg
 
     def _get_state(self, name):
+        if name == 'next':
+            # Reserved keyword for next state in script
+            return self._script[self._script.index(self.curr_state)+1]
+        if name == 'prev':
+            # Reserved keyword for next state in script
+            return self._script[self._script.index(self.curr_state)-1]
+        if name == 'back':
+            # TODO: implement context stack
+            raise NotImplementedError
+
         for state in self._script:
             if state.get('name', None) == name:
                 return state
@@ -61,12 +71,12 @@ class RememberMachine:
         with (trigger, state_name, actions)"""
         # Get triggers local to this state
         local_transitions = get_list(self.curr_state, '=>')
-        local_triggers = [(trigger, trans.get('to', None), get_list(trans, '='))
+        local_triggers = [(trigger, trans.get('to', 'next'), get_list(trans, '='))
                           for trans in local_transitions
                           for trigger in get_list(trans, '?')]
 
         # Get triggers reachable from anywhere
-        global_triggers = [(trigger, state.get('name', None), [])
+        global_triggers = [(trigger, state.get('name', 'next'), [])
                            for state in self._script
                            for trigger in get_list(state, '?')]
 

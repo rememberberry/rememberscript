@@ -1,0 +1,11 @@
+- name: init
+  =>:
+    - ?: "{@True@}"
+- name: state1
+  =enter: "state1"
+  =>: 
+    ?: "{@True@}"
+    to: "prev"
+    =: "to init"
+- name: state2
+  =enter: "state2"
