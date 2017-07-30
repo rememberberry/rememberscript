@@ -1,10 +1,10 @@
 - name: init
   =>:
-    - ?: "{@True@}"
+    - ?: "{{True}}"
 - name: state1
   =enter: "state1"
   =>: 
-    ?: "{@True@}"
+    ?: "{{True}}"
     to: "prev"
     =: "to init"
 - name: state2

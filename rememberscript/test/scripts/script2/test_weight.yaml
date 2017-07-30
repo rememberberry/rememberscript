@@ -1,8 +1,8 @@
 - name: init
   =>:
-    - ?: "{@True@}{%weight = 1%}"
+    - ?: "{{True}}[[weight = 1]]"
       to: state1
-    - ?: "{@True@}{%weight = 2%}"
+    - ?: "{{True}}[[weight = 2]]"
       to: state2
 - name: state1
   =enter: "state1"

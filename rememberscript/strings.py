@@ -1,21 +1,27 @@
 import re
 from types import FunctionType
 
+EVAL_START = '{{'
+EVAL_END = '}}'
+EXEC_START = '[['
+EXEC_END = ']]'
+
 def is_str_empty(string):
     """Check whether string is empty (except for execs and evals)"""
-    return ((string.startswith('{%') or string.startswith('{@')) and
-            (string.endswith('%}') or string.endswith('@}')))
+    return ((string.startswith(EVAL_START) or string.startswith(EXEC_START)) and
+            (string.endswith(EVAL_END) or string.endswith(EXEC_END)))
 
+esc = lambda x: re.escape(x)
 
 async def execute_string(string, storage):
     """Executes {% %} blocks in the string and removes them"""
-    execs = re.compile('{%(.*?)%}').findall(string)
+    execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
         # Exec with session storage to store local variables
         exec(ex, {}, storage)
 
         # Remove code block
-        exec_block = '{%'+ex+'%}'
+        exec_block = EXEC_START + ex + EXEC_END
         start = string.index(exec_block)
         end = start + len(exec_block)
         string = string[:start] + string[end:]
@@ -25,13 +31,13 @@ async def execute_string(string, storage):
 async def evaluate_split_string(string, storage):
     """Evaluates {@ @} blocks and yields the string parts and evaluated
     results in order"""
-    evals = re.compile('{@(.*?)@}').findall(string)
+    evals = re.compile('%s(.*?)%s' % (esc(EVAL_START), esc(EVAL_END))).findall(string)
     for ev in evals:
         # Eval with session storage to provide local variables
         eval_result = eval(ev, {}, storage)
 
         # yield the string up to the eval block and the eval result
-        eval_block = '{@'+ev+'@}'
+        eval_block = EVAL_START + ev + EVAL_END
         start = string.index(eval_block)
         end = start + len(eval_block)
         if start > 0:
