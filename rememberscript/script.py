@@ -59,7 +59,7 @@ def _maybe_nested_str(obj, key):
 
 def _validate_transition(transition):
     assert isinstance(transition, dict), 'Transition should be dict'
-    assert isinstance(transition.get('to', ''), str), '"to" should be str'
+    assert isinstance(transition.get('->', ''), str), '"to" should be str'
     for key in ['?', '=']:
         _maybe_nested_str(transition, key)
 

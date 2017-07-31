@@ -1,11 +1,11 @@
 - name: init
-  =>:
+  transitions:
     - ?: "{{True}}"
 - name: state1
   =enter: "state1"
-  =>: 
+  transitions: 
     ?: "{{True}}"
-    to: "prev"
+    =>: "prev"
     =: "to init"
 - name: state2
   =enter: "state2"

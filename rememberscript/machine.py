@@ -71,7 +71,8 @@ class RememberMachine:
         with (trigger, state_name, actions)"""
         # Get triggers local to this state
         local_transitions = get_list(self.curr_state, '=>')
-        local_triggers = [(trigger, trans.get('to', 'next'), get_list(trans, '='))
+        default_trigger = '{{True}}'
+        local_triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
                           for trans in local_transitions
                           for trigger in get_list(trans, '?')]
 

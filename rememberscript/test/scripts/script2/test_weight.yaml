@@ -1,9 +1,9 @@
 - name: init
-  =>:
+  transitions:
     - ?: "{{True}}[[weight = 1]]"
-      to: state1
+      =>: state1
     - ?: "{{True}}[[weight = 2]]"
-      to: state2
+      =>: state2
 - name: state1
   =enter: "state1"
 - name: state2

@@ -1,10 +1,10 @@
 - name: init
-  =>:
+  transitions:
     - ?: "{{not initial_setup_done}}"
-      to: initial_setup
+      =>: initial_setup
       =: Welcome!
     - ?: "{{initial_setup_done}}"
-      to: study
+      =>: study
       =: Welcome back!
 - name: initial_setup
   =enter: "Set a username:"
@@ -12,9 +12,9 @@
     - "[[username = msg]]"
     - "[[initial_setup_done = True]]"
     - Thanks, we're all set up
-  =>:
+  transitions:
     ?: "{{True}}"
-    to: study
+    =>: study
 - name: study
   =enter: "Lets study"
   ?: 
