@@ -34,10 +34,11 @@ def load_script(yaml_path, py_path, storage):
 
 def load_scripts_dir(path, storage):
     """Loads all scripts in a dir"""
-    scripts = []
+    scripts = {}
     for yaml_filename in glob.glob(os.path.join(path, '*.yaml')):
+        story_name = os.path.basename(yaml_filename).split('.yaml')[0]
         py_filename = yaml_filename.split('.yaml')[0] + '.py'
-        scripts += load_script(yaml_filename, py_filename, storage)
+        scripts[story_name] = load_script(yaml_filename, py_filename, storage)
     return scripts
 
 
@@ -78,8 +79,12 @@ def _validate_state(state):
 
 def validate_script(script):
     """Validate a loaded yaml script"""
-    assert isinstance(script, list), 'Script should be list'
-    for state in script:
-        _validate_state(state)
+    assert isinstance(script, dict), 'Script should be dict'
+    assert 'init' in script, "There needs to be an 'init' story in the script"
+
+    for _, states in script.items():
+        assert isinstance(states, list), 'States should be list'
+        for state in states:
+            _validate_state(state)
 
     #TODO: validate that referenced states exist

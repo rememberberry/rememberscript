@@ -1,0 +1,5 @@
+- name: init
+  =enter: in other
+  =>:
+    ->: back
+    =: "[[var=True]]"

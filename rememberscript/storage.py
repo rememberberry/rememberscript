@@ -30,4 +30,8 @@ class Storage(MutableMapping):
 
     def sync(self):
         """Sync to file"""
+        # Remove private variables, functions and classes and any other
+        # unpickleable object
+
+        # Dump to file
         pickle.dump(self._dict, self._filename)

@@ -2,5 +2,6 @@
   state on the stack, and then have the ability to return
 * Implement random actions
 * Implement list of "and" options for trigger
-* Implement omitting of 'to' on transitions, for transitioning to the next
-  state in the list
+* Make sure local triggers are prioritized over global, and that more conservative
+  matches are prioritized over others
+* Add trigger examples along side replies

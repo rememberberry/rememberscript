@@ -2,9 +2,9 @@ import traceback
 from types import FunctionType
 from .strings import process_string, match_trigger
 
-def get_list(obj, key):
+def get_list(obj, key, default=[]):
     if key not in obj:
-        return []
+        return default
     return obj[key] if isinstance(obj[key], list) else [obj[key]]
 
 class RememberMachine:
@@ -14,12 +14,15 @@ class RememberMachine:
     def __init__(self, script, storage=None):
         self._script = script
         self._storage = storage or {}
+        self.curr_story = None
+        self.curr_state = None
+        self.story_state_stack = []
 
     def init(self):
         """Sets the current state to the init state
         Note: one never enters into the init state, we just are in it,
         therefore pre-reply-actions and state triggers dont apply"""
-        self.curr_state = self._get_state('init')
+        self._set_state('init')
         assert self.curr_state is not None
 
     async def reply(self, msg):
@@ -45,26 +48,38 @@ class RememberMachine:
             async for msg in self._evaluate_action(action):
                 yield msg
 
-        self.curr_state = self._get_state(next_state)
+        self._set_state(next_state)
         for action in get_list(self.curr_state, '=enter'):
             async for msg in self._evaluate_action(action):
                 yield msg
 
-    def _get_state(self, name):
-        if name == 'next':
+    def _set_state(self, name_or_story):
+        if name_or_story == 'next':
             # Reserved keyword for next state in script
-            return self._script[self._script.index(self.curr_state)+1]
-        if name == 'prev':
+            self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)+1]
+            return
+        if name_or_story == 'prev':
             # Reserved keyword for next state in script
-            return self._script[self._script.index(self.curr_state)-1]
-        if name == 'back':
-            # TODO: implement context stack
-            raise NotImplementedError
+            self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)-1]
+            return
+        if name_or_story == 'back':
+            self.curr_story, self.curr_state = self.story_state_stack.pop()
+            return
 
-        for state in self._script:
-            if state.get('name', None) == name:
-                return state
-        return None
+        # First check states in the local story
+        story = self.curr_story or {}
+        for state in story:
+            if state.get('name', None) == name_or_story:
+                self.curr_state = state
+                return
+
+        # Then check stories in the script
+        if name_or_story in self._script:
+            self.story_state_stack.append((self.curr_story, self.curr_state))
+            self.curr_story = self._script[name_or_story]
+            # Return the init state of the new story
+            self._set_state('init')
+            return
 
     def _get_triggers(self):
         """Returns triples of local and global triggers 
@@ -74,7 +89,7 @@ class RememberMachine:
         default_trigger = '{{True}}'
         local_triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
                           for trans in local_transitions
-                          for trigger in get_list(trans, '?')]
+                          for trigger in get_list(trans, '?', default_trigger)]
 
         # Get triggers reachable from anywhere
         global_triggers = [(trigger, state.get('name', 'next'), [])
