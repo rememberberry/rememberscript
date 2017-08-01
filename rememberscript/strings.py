@@ -1,19 +1,21 @@
 import re
 from types import FunctionType
+from typing import MutableMapping, Any, AsyncIterator, Union, List
+from .storage import StorageType
 
 EVAL_START = '{{'
 EVAL_END = '}}'
 EXEC_START = '[['
 EXEC_END = ']]'
 
-def is_str_empty(string):
+def is_str_empty(string: str) -> bool:
     """Check whether string is empty (except for execs and evals)"""
     return ((string.startswith(EVAL_START) or string.startswith(EXEC_START)) and
             (string.endswith(EVAL_END) or string.endswith(EXEC_END)))
 
 esc = lambda x: re.escape(x)
 
-async def execute_string(string, storage):
+async def execute_string(string: str, storage: StorageType) -> str:
     """Executes {% %} blocks in the string and removes them"""
     execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
@@ -28,7 +30,7 @@ async def execute_string(string, storage):
     return string
 
 
-async def evaluate_split_string(string, storage):
+async def evaluate_split_string(string: str, storage: StorageType) -> AsyncIterator[str]:
     """Evaluates {@ @} blocks and yields the string parts and evaluated
     results in order"""
     evals = re.compile('%s(.*?)%s' % (esc(EVAL_START), esc(EVAL_END))).findall(string)
@@ -51,7 +53,7 @@ async def evaluate_split_string(string, storage):
         yield string
 
 
-async def process_string(string, storage=None):
+async def process_action(string: str, storage: StorageType=None) -> AsyncIterator[Union[str]]:
     """Processes code blocks in a string and yields results by:
         1. Exec code wrapped in '{%...%}' and remove code from remaining string
         2. Evaluate code wrapped in '{@...@}' and substitute in the 
@@ -72,22 +74,22 @@ async def process_string(string, storage=None):
         async for result in func(storage):
             if result is not None:
                 yield result
-    elif len(parts) == 1:
-        yield parts[0]
+    #elif len(parts) == 1:
+        #yield parts[0]
     else:
-        parts = map(lambda x: str(x) if not isinstance(x, str) else x, parts)
+        parts = list(map(lambda x: str(x) if not isinstance(x, str) else x, parts))
         yield ''.join(parts)
 
 
-async def match_trigger(string, trigger, storage=None):
+async def match_trigger(string: str, trigger: str, storage: StorageType=None) -> bool:
     storage = {} if storage is None else storage
     trigger = await execute_string(trigger, storage)
     parts = [part async for part in evaluate_split_string(trigger, storage)]
     if len(parts) == 1 and isinstance(parts[0], bool):
         return parts[0]
 
-    regex_parts = []
-    match_functions = []
+    regex_parts: List[str] = []
+    match_functions: List[FunctionType] = []
     for part in parts:
         if isinstance(part, FunctionType):
             regex_parts.append('(?P<call%i>.*?)' % len(match_functions))

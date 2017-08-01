@@ -8,9 +8,14 @@ or not flexible enough to represent the schema needed
 """
 import os
 import glob
+from typing import Dict, List, Any
 import yaml
+from .storage import StorageType
 
-def load_script(yaml_path, py_path, storage):
+StateType = Dict[str, Any]
+ScriptType = Dict[str, List[StateType]]
+
+def load_script(yaml_path: str, py_path: str, storage: StorageType) -> ScriptType:
     """Loads a single script yaml and py file,
     Saves the local variables in the py file to 'storage'
     """
@@ -32,7 +37,7 @@ def load_script(yaml_path, py_path, storage):
     return script
 
 
-def load_scripts_dir(path, storage):
+def load_scripts_dir(path: str, storage: StorageType) -> Dict[str, ScriptType]:
     """Loads all scripts in a dir"""
     scripts = {}
     for yaml_filename in glob.glob(os.path.join(path, '*.yaml')):
@@ -83,6 +88,7 @@ def validate_script(script):
     assert 'init' in script, "There needs to be an 'init' story in the script"
 
     for _, states in script.items():
+        assert len(states) > 0 and states[0]['name'] == 'init', 'First state should be init'
         assert isinstance(states, list), 'States should be list'
         for state in states:
             _validate_state(state)

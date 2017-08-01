@@ -2,6 +2,10 @@
 import os
 import pickle
 from collections import MutableMapping
+from typing import MutableMapping as MutableMappingType
+from typing import Any
+
+StorageType = MutableMappingType[str, Any]
 
 class Storage(MutableMapping):
     """A storage class that behaves like dict, but persists public entries to file

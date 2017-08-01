@@ -1,7 +1,7 @@
 """Test the string functions"""
 import pytest
 import os
-from rememberscript.strings import process_string, match_trigger
+from rememberscript.strings import process_action, match_trigger
 
 async def dummy(storage):
     yield 'hello'
@@ -10,44 +10,44 @@ async def dummy(storage):
 @pytest.mark.asyncio
 async def test_string_processing():
     storage = {}
-    result = [a async for a in process_string('hello world', storage)]
+    result = [a async for a in process_action('hello world', storage)]
     assert len(result) == 1 and result[0] == 'hello world'
     assert len(storage) == 0
 
-    result = [a async for a in process_string('hello {{42}}', storage)]
+    result = [a async for a in process_action('hello {{42}}', storage)]
     assert len(result) == 1 and result[0] == 'hello 42'
     assert len(storage) == 0
 
-    result = [a async for a in process_string('{{42}}', storage)]
-    assert len(result) == 1 and result[0] == 42
+    result = [a async for a in process_action('{{42}}', storage)]
+    assert len(result) == 1 and result[0] == '42'
     assert len(storage) == 0
 
-    result = [a async for a in process_string('{{"hello world"}} hello {{42}}',
+    result = [a async for a in process_action('{{"hello world"}} hello {{42}}',
                                               storage)]
     assert len(result) == 1 and result[0] == 'hello world hello 42'
     assert len(storage) == 0
 
     storage = {}
-    result = [a async for a in process_string('[[hello = 42]]', storage)]
+    result = [a async for a in process_action('[[hello = 42]]', storage)]
     assert len(result) == 0
     assert storage.get('hello', None) == 42
 
     storage = {}
-    result = [a async for a in process_string('[[hello = 4]][[world = 2]]', storage)]
+    result = [a async for a in process_action('[[hello = 4]][[world = 2]]', storage)]
     assert len(result) == 0
     assert storage.get('hello', None) == 4 and storage.get('world') == 2
 
     storage = {}
-    result = [a async for a in process_string('hello[[hello = 42]]world', storage)]
+    result = [a async for a in process_action('hello[[hello = 42]]world', storage)]
     assert len(result) == 1 and result[0] == 'helloworld'
     assert storage.get('hello', None) == 42
 
-    result = [a async for a in process_string('[[hello = 4]]{{"hello world"}} hello {{42}}[[world=2]]',
+    result = [a async for a in process_action('[[hello = 4]]{{"hello world"}} hello {{42}}[[world=2]]',
                                               storage)]
     assert len(result) == 1 and result[0] == 'hello world hello 42'
     assert storage.get('hello', None) == 4 and storage.get('world', None) == 2
 
-    result = [a async for a in process_string('{{dummy}}', {'dummy': dummy})]
+    result = [a async for a in process_action('{{dummy}}', {'dummy': dummy})]
     assert len(result) == 2 and result[0] == 'hello' and result[1] == 'world'
 
 

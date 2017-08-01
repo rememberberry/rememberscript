@@ -1,8 +1,15 @@
 import traceback
 from types import FunctionType
-from .strings import process_string, match_trigger
+from typing import List, Any, Tuple, AsyncIterator, Union
+from .strings import process_action, match_trigger
+from .storage import StorageType
+from .script import ScriptType, StateType
 
-def get_list(obj, key, default=[]):
+Triggers = Any#List[Tuple[float, str, list]]
+
+def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
+    """Returns a list of items at key in object, converts to list if existing 
+    item is not list"""
     if key not in obj:
         return default
     return obj[key] if isinstance(obj[key], list) else [obj[key]]
@@ -11,12 +18,12 @@ class RememberMachine:
     """A finite state machine (FSM) that is initialized with a script,
     receives messages and yields replies. This class is build using
     concurrent coroutines for use with asyncio. """
-    def __init__(self, script, storage=None):
+    def __init__(self, script: ScriptType, storage: StorageType=None) -> None:
         self._script = script
         self._storage = storage or {}
-        self.curr_story = None
-        self.curr_state = None
-        self.story_state_stack = []
+        self.curr_story: List[StateType] = []
+        self.curr_state: Union[StateType, None] = None
+        self.story_state_stack: List[Tuple[List[StateType], StateType]] = []
 
     def init(self):
         """Sets the current state to the init state
@@ -25,7 +32,7 @@ class RememberMachine:
         self._set_state('init')
         assert self.curr_state is not None
 
-    async def reply(self, msg):
+    async def reply(self, msg: str) -> AsyncIterator[str]:
         """Processes a message and yields any number of replies in this way:
         1. Run any =exit actions in the current state
         2. Evaluates all global and local triggers and finds the highest
@@ -38,22 +45,22 @@ class RememberMachine:
         self._storage['msg'] = msg
 
         for action in get_list(self.curr_state, '=exit'):
-            async for msg in self._evaluate_action(action):
-                yield msg
+            async for m in self._evaluate_action(action):
+                yield m
 
         transitions = [(await self._evaluate_trigger(t, msg), *rest) 
                        for t, *rest in self._get_triggers()]
         _, next_state, transition_actions = max(transitions, key=lambda x: x[0])
         for action in transition_actions:
-            async for msg in self._evaluate_action(action):
-                yield msg
+            async for m in self._evaluate_action(action):
+                yield m
 
         self._set_state(next_state)
         for action in get_list(self.curr_state, '=enter'):
-            async for msg in self._evaluate_action(action):
-                yield msg
+            async for m in self._evaluate_action(action):
+                yield m
 
-    def _set_state(self, name_or_story):
+    def _set_state(self, name_or_story: str) -> None:
         if name_or_story == 'next':
             # Reserved keyword for next state in script
             self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)+1]
@@ -67,7 +74,7 @@ class RememberMachine:
             return
 
         # First check states in the local story
-        story = self.curr_story or {}
+        story = self.curr_story
         for state in story:
             if state.get('name', None) == name_or_story:
                 self.curr_state = state
@@ -81,7 +88,7 @@ class RememberMachine:
             self._set_state('init')
             return
 
-    def _get_triggers(self):
+    def _get_triggers(self) -> Triggers:
         """Returns triples of local and global triggers 
         with (trigger, state_name, actions)"""
         # Get triggers local to this state
@@ -89,26 +96,25 @@ class RememberMachine:
         # Have a default trigger with weight 0, so that any other successful
         # trigger with weight > 0 overrides it
         default_trigger = '{{True}}[[weight = 0]]'
-        local_triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
-                          for trans in local_transitions
-                          for trigger in get_list(trans, '?', [default_trigger])]
+        loc: Triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
+                         for trans in local_transitions
+                         for trigger in get_list(trans, '?', [default_trigger])]
 
         # Get triggers reachable from anywhere
-        global_triggers = [(trigger, state.get('name', 'next'), [])
-                           for state in self._script
-                           for trigger in get_list(state, '?')]
+        glob: Triggers = [(trigger, story[0].get('name', 'next'), [])
+                          for story in self._script.values()
+                          for trigger in get_list(story[0], '?')]
 
-        return local_triggers + global_triggers
+        return loc + glob
 
-    async def _evaluate_action(self, action):
-        async for msg in process_string(action, self._storage):
+    async def _evaluate_action(self, action: str) -> AsyncIterator[Union[str]]:
+        async for msg in process_action(action, self._storage):
             yield msg
 
-    async def _evaluate_trigger(self, trigger, msg):
+    async def _evaluate_trigger(self, trigger: str, msg: str) -> float:
         self._storage['weight'] = 1.0 # set default weight
-        match = await match_trigger(msg, trigger, self._storage)
+        match: bool = await match_trigger(msg, trigger, self._storage)
         weight = self._storage['weight']
         del self._storage['weight']
 
-        assert isinstance(match, bool), match
         return weight if match else -1.0
