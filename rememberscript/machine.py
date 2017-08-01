@@ -86,10 +86,12 @@ class RememberMachine:
         with (trigger, state_name, actions)"""
         # Get triggers local to this state
         local_transitions = get_list(self.curr_state, '=>')
-        default_trigger = '{{True}}'
+        # Have a default trigger with weight 0, so that any other successful
+        # trigger with weight > 0 overrides it
+        default_trigger = '{{True}}[[weight = 0]]'
         local_triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
                           for trans in local_transitions
-                          for trigger in get_list(trans, '?', default_trigger)]
+                          for trigger in get_list(trans, '?', [default_trigger])]
 
         # Get triggers reachable from anywhere
         global_triggers = [(trigger, state.get('name', 'next'), [])
@@ -109,4 +111,4 @@ class RememberMachine:
         del self._storage['weight']
 
         assert isinstance(match, bool), match
-        return weight if match else 0.0
+        return weight if match else -1.0
