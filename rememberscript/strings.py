@@ -16,7 +16,7 @@ def is_str_empty(string: str) -> bool:
 esc = lambda x: re.escape(x)
 
 async def execute_string(string: str, storage: StorageType) -> str:
-    """Executes {% %} blocks in the string and removes them"""
+    """Executes [[ ]] blocks in the string and removes them"""
     execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
         # Exec with session storage to store local variables
@@ -31,7 +31,7 @@ async def execute_string(string: str, storage: StorageType) -> str:
 
 
 async def evaluate_split_string(string: str, storage: StorageType) -> AsyncIterator[str]:
-    """Evaluates {@ @} blocks and yields the string parts and evaluated
+    """Evaluates {{ }} blocks and yields the string parts and evaluated
     results in order"""
     evals = re.compile('%s(.*?)%s' % (esc(EVAL_START), esc(EVAL_END))).findall(string)
     for ev in evals:
@@ -55,8 +55,8 @@ async def evaluate_split_string(string: str, storage: StorageType) -> AsyncItera
 
 async def process_action(string: str, storage: StorageType=None) -> AsyncIterator[Union[str]]:
     """Processes code blocks in a string and yields results by:
-        1. Exec code wrapped in '{%...%}' and remove code from remaining string
-        2. Evaluate code wrapped in '{@...@}' and substitute in the 
+        1. Exec code wrapped in '[[...]]' and remove code from remaining string
+        2. Evaluate code wrapped in '{{...}}' and substitute in the 
            original string and yield it/them
 
     storage -- optional storage used for execs and evals, defaults to {}
