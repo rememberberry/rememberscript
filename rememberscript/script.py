@@ -32,7 +32,7 @@ def load_script(yaml_path: str, py_path: str, storage: StorageType) -> ScriptTyp
         print('loading python script at %s' % py_path)
         # Run the .py file and populate self._storage with
         # the resulting local variables
-        exec(py_data.read(), {}, storage)
+        exec(py_data.read(), {'__name__': '__main__'}, storage)
 
     return script
 

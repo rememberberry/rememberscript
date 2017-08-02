@@ -2,3 +2,4 @@ pyyaml
 pytest
 pytest-asyncio
 mypy
+aiofiles
