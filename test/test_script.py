@@ -12,6 +12,14 @@ def get_machine(name):
     m.init()
     return m
 
+
+async def replies_test(replies, *correct):
+    for reply in correct:
+        assert await replies.__anext__() == reply, reply
+    with pytest.raises(StopAsyncIteration):
+        await replies.__anext__()
+
+
 @pytest.mark.asyncio
 async def test_bot1():
     """Test a simple login script"""
@@ -19,20 +27,12 @@ async def test_bot1():
     m = get_machine('script1')
     assert len(m._get_triggers()) == 2
 
-    replies = m.reply('')
-    assert await replies.__anext__() == 'Welcome!'
-    assert await replies.__anext__() == 'Set a username:'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
+    await replies_test(m.reply(''), 'Welcome!', 'Set a username:')
+    await replies_test(m.reply('user'), 'Thanks, we\'re all set up', 'Lets study')
 
-    replies = m.reply('user')
-    assert await replies.__anext__() == 'Thanks, we\'re all set up'
-    assert await replies.__anext__() == 'Lets study'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
-    print(m._storage)
     assert 'username' in m._storage
     assert m._storage['username'] == 'user'
+
 
 @pytest.mark.asyncio
 async def test_weight():
@@ -41,10 +41,8 @@ async def test_weight():
     m = get_machine('script2')
     assert len(m._get_triggers()) == 2
 
-    replies = m.reply('')
-    assert await replies.__anext__() == 'state2'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
+    await replies_test(m.reply(''), 'state2')
+
 
 @pytest.mark.asyncio
 async def test_next_prev():
@@ -52,15 +50,9 @@ async def test_next_prev():
     storage = {}
     m = get_machine('script3')
 
-    replies = m.reply('')
-    assert await replies.__anext__() == 'state1'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
+    await replies_test(m.reply(''), 'state1')
+    await replies_test(m.reply(''), 'to init')
 
-    replies = m.reply('')
-    assert await replies.__anext__() == 'to init'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
 
 @pytest.mark.asyncio
 async def test_stories():
@@ -68,17 +60,6 @@ async def test_stories():
     storage = {}
     m = get_machine('script4')
 
-    replies = m.reply('')
-    assert await replies.__anext__() == 'in other'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
-
-    replies = m.reply('')
-    assert await replies.__anext__() == 'in init'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
-    replies = m.reply('')
-    assert await replies.__anext__() == 'going to foo'
-    assert await replies.__anext__() == 'in foo'
-    with pytest.raises(StopAsyncIteration):
-        await replies.__anext__()
+    await replies_test(m.reply(''), 'in other')
+    await replies_test(m.reply(''), 'in init')
+    await replies_test(m.reply(''), 'going to foo', 'in foo')
