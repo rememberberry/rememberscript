@@ -1,4 +1,5 @@
 import re
+import inspect
 from types import FunctionType
 from typing import MutableMapping, Any, AsyncIterator, Union, List
 from .storage import StorageType
@@ -20,7 +21,14 @@ async def execute_string(string: str, storage: StorageType) -> str:
     execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
         # Exec with session storage to store local variables
+        # Keep track of new variables and await them if they are coroutines
+        prev_keys = set(storage.keys())
         exec(ex, {}, storage)
+        updated_keys = set(storage.keys())
+        for key in updated_keys - prev_keys:
+            val = storage[key]
+            if inspect.iscoroutine(val):
+                storage[key] = await val
 
         # Remove code block
         exec_block = EXEC_START + ex + EXEC_END
@@ -37,6 +45,8 @@ async def evaluate_split_string(string: str, storage: StorageType) -> AsyncItera
     for ev in evals:
         # Eval with session storage to provide local variables
         eval_result = eval(ev, {}, storage)
+        if inspect.iscoroutine(eval_result):
+            eval_result = await eval_result
 
         # yield the string up to the eval block and the eval result
         eval_block = EVAL_START + ev + EVAL_END
@@ -71,11 +81,14 @@ async def process_action(string: str, storage: StorageType=None) -> AsyncIterato
     parts = [part async for part in evaluate_split_string(string, storage)]
     if len(parts) == 1 and isinstance(parts[0], FunctionType):
         func = parts[0]
-        async for result in func(storage):
-            if result is not None:
-                yield result
-    #elif len(parts) == 1:
-        #yield parts[0]
+        if inspect.isasyncgenfunction(func):
+            async for result in func(storage):
+                if result is not None:
+                    yield result
+        else:
+            for result in func(storage):
+                if result is not None:
+                    yield result
     else:
         parts = list(map(lambda x: str(x) if not isinstance(x, str) else x, parts))
         yield ''.join(parts)
@@ -107,10 +120,14 @@ async def match_trigger(string: str, trigger: str, storage: StorageType=None) ->
         return False
 
     # Check that the matching functions succeed
-    for i, fun in enumerate(match_functions):
+    for i, func in enumerate(match_functions):
         match = m.group('call%i' % i)
-        if not await fun(match, storage):
-            return False
+        if inspect.iscoroutinefunction(func):
+            if not await func(match, storage):
+                return False
+        else:
+            if not func(match, storage):
+                return False
 
     # Add the matches to storage as match0 ... matchN-1
     for i in range(0, len(m.groups())):

@@ -7,6 +7,9 @@ async def dummy(storage):
     yield 'hello'
     yield 'world'
 
+async def dummy2():
+    return 3
+
 @pytest.mark.asyncio
 async def test_string_processing():
     storage = {}
@@ -50,6 +53,12 @@ async def test_string_processing():
     result = [a async for a in process_action('{{dummy}}', {'dummy': dummy})]
     assert len(result) == 2 and result[0] == 'hello' and result[1] == 'world'
 
+    # Test executing coroutines
+    result = [a async for a in process_action('{{dummy2()}}', {'dummy2': dummy2})]
+
+    storage = {'dummy2': dummy2}
+    result = [a async for a in process_action('[[foo = dummy2()]]', storage)]
+    assert storage.get('foo') == 3
 
 async def my_matching_fn(string, storage):
     return string == 'hello'
