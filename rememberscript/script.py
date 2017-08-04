@@ -15,10 +15,12 @@ from .storage import StorageType
 StateType = Dict[str, Any]
 ScriptType = Dict[str, List[StateType]]
 
-def load_script(yaml_path: str, py_path: str, storage: StorageType) -> ScriptType:
+def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptType:
     """Loads a single script yaml and py file,
     Saves the local variables in the py file to 'storage'
     """
+    yaml_path = os.path.join(dir_path, story_name+'.yaml')
+    py_path = os.path.join(dir_path, story_name+'.pyr')
     script = None
     with open(yaml_path, 'r') as yaml_data:
         print('loading yaml script at %s' % yaml_path)
@@ -44,8 +46,8 @@ def load_scripts_dir(path: str, storage: StorageType) -> Dict[str, ScriptType]:
         story_name = os.path.basename(yaml_filename).split('.yaml')[0]
         # NOTE: use 'pyr' extension instead of 'py' to indicate that
         # they are not executable on their own or part of any module
-        py_filename = yaml_filename.split('.yaml')[0] + '.pyr'
-        scripts[story_name] = load_script(yaml_filename, py_filename, storage)
+        dir_path = os.path.dirname(yaml_filename)
+        scripts[story_name] = load_script(dir_path, story_name, storage)
     return scripts
 
 
