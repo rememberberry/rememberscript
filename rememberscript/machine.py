@@ -87,6 +87,8 @@ class RememberMachine:
             # Return the init state of the new story
             self._set_state('init')
             return
+        else:
+            raise ValueError('No such state or story: %s' % name_or_story)
 
     def _get_triggers(self) -> Triggers:
         """Returns triples of local and global triggers 
