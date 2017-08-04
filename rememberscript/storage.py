@@ -26,23 +26,29 @@ def _sync_var(key, var):
 class FileStorage(MutableMapping):
     """A storage class that behaves like dict, but persists public entries to file
     Note: private entries start with an _ (underscore)"""
-    def __init__(self, filename):
-        self._filename = filename
+    def __init__(self, filename=None):
+        self.filename = filename
         self._dict = {}
 
     async def load(self):
-        if os.path.exists(self._filename):
-            async with aiofiles.open(self._filename, mode='rb') as f:
-                self._dict = pickle.loads(await f.read())
+        """Sync from filename, overwrites exisiting dict entries but doens't
+        delete existing"""
+        if not self.filename:
+            return
+        if os.path.exists(self.filename):
+            async with aiofiles.open(self.filename, mode='rb') as f:
+                self._dict.update(pickle.loads(await f.read()).items())
 
     async def sync(self):
-        """Sync to file"""
+        """Sync to filename"""
+        if not self.filename:
+            return
         # Remove private variables, functions and classes and any other
         # unpickleable object
         sync_vars = {key: var for key, var in self._dict.items() if _sync_var(key, var)}
 
         # Dump to file
-        async with aiofiles.open(self._filename, mode='wb') as f:
+        async with aiofiles.open(self.filename, mode='wb') as f:
             await f.write(pickle.dumps(sync_vars))
 
     def __delitem__(self, key):
@@ -59,3 +65,9 @@ class FileStorage(MutableMapping):
 
     def __iter__(self):
         return iter(self._dict)
+
+    def __repr__(self):
+        return repr(self._dict)
+
+    def __str__(self):
+        return str(self._dict)
