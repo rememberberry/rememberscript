@@ -1,3 +1,3 @@
 #! /bin/bash
-mypy rememberscript/*.py
+mypy --ignore-missing-imports rememberscript/*.py
 pytest
