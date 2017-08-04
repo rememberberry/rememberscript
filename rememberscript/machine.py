@@ -5,7 +5,7 @@ from .strings import process_action, match_trigger
 from .storage import StorageType
 from .script import ScriptType, StateType
 
-Triggers = Any#List[Tuple[float, str, list]]
+Triggers = List[Tuple[str, str, List[str]]]
 
 def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
     """Returns a list of items at key in object, converts to list if existing 
@@ -48,8 +48,8 @@ class RememberMachine:
             async for m in self._evaluate_action(action):
                 yield m
 
-        transitions = [(await self._evaluate_trigger(t, msg), *rest) 
-                       for t, *rest in self._get_triggers()]
+        transitions = [(await self._evaluate_trigger(t, msg), next_state, actions)
+                       for t, next_state, actions in self._get_triggers()]
         _, next_state, transition_actions = max(transitions, key=lambda x: x[0])
         for action in transition_actions:
             async for m in self._evaluate_action(action):
