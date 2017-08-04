@@ -42,7 +42,9 @@ def load_scripts_dir(path: str, storage: StorageType) -> Dict[str, ScriptType]:
     scripts = {}
     for yaml_filename in glob.glob(os.path.join(path, '*.yaml')):
         story_name = os.path.basename(yaml_filename).split('.yaml')[0]
-        py_filename = yaml_filename.split('.yaml')[0] + '.py'
+        # NOTE: use 'pyr' extension instead of 'py' to indicate that
+        # they are not executable on their own or part of any module
+        py_filename = yaml_filename.split('.yaml')[0] + '.pyr'
         scripts[story_name] = load_script(yaml_filename, py_filename, storage)
     return scripts
 
