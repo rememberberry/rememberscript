@@ -81,6 +81,8 @@ def _validate_state(state):
     for key in ['=enter', '=exit', '?']:
         _maybe_nested_str(state, key)
 
+    assert isinstance(state.get('response_type', ''), str), 'Response type must be str'
+
 
 def validate_script(script):
     """Validate a loaded yaml script"""
