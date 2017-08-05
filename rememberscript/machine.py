@@ -21,6 +21,8 @@ class RememberMachine:
     def __init__(self, script: ScriptType, storage: StorageType=None) -> None:
         self._script = script
         self._storage = storage or {}
+        # Add storage itself as a private local variable, so it's accessible
+        storage['_storage'] = storage
         self.curr_story: List[StateType] = []
         self.curr_state: Union[StateType, None] = None
         self.story_state_stack: List[Tuple[List[StateType], StateType]] = []
