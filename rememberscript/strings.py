@@ -21,11 +21,8 @@ async def execute_string(string: str, storage: StorageType) -> str:
     execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
         # Exec with session storage to store local variables
-        # Keep track of new variables and await them if they are coroutines
-        prev_keys = set(storage.keys())
         exec(ex, {}, storage)
-        updated_keys = set(storage.keys())
-        for key in updated_keys - prev_keys:
+        for key in list(storage.keys()):
             val = storage[key]
             if inspect.iscoroutine(val):
                 storage[key] = await val
@@ -38,7 +35,7 @@ async def execute_string(string: str, storage: StorageType) -> str:
     return string
 
 
-async def evaluate_split_string(string: str, storage: StorageType) -> AsyncIterator[str]:
+async def evaluate_split_string(string: str, storage: StorageType) -> AsyncIterator[Any]:
     """Evaluates {{ }} blocks and yields the string parts and evaluated
     results in order"""
     evals = re.compile('%s(.*?)%s' % (esc(EVAL_START), esc(EVAL_END))).findall(string)
@@ -79,19 +76,30 @@ async def process_action(string: str, storage: StorageType=None) -> AsyncIterato
         return
 
     parts = [part async for part in evaluate_split_string(string, storage)]
-    if len(parts) == 1 and isinstance(parts[0], FunctionType):
-        func = parts[0]
-        if inspect.isasyncgenfunction(func):
-            async for result in func(storage):
-                if result is not None:
-                    yield result
+    if len(parts) == 1:
+        part = parts[0]
+        if (inspect.isasyncgenfunction(part) or inspect.isgeneratorfunction(part)
+                or inspect.iscoroutinefunction(part) or inspect.isfunction(part)):
+            part = part()
+
+        if inspect.iscoroutine(part):
+            part = await part
+
+        if inspect.isasyncgen(part):
+            async for result in part:
+                if result not in [None, '']:
+                    yield str(result)
+        elif inspect.isgenerator(part):
+            for result in part:
+                if result not in [None, '']:
+                    yield str(result)
         else:
-            for result in func(storage):
-                if result is not None:
-                    yield result
+            yield str(part)
     else:
         parts = list(map(lambda x: str(x) if not isinstance(x, str) else x, parts))
-        yield ''.join(parts)
+        result = ''.join(parts)
+        if result not in [None, '']:
+            yield result
 
 
 async def match_trigger(string: str, trigger: str, storage: StorageType=None) -> bool:

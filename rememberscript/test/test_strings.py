@@ -3,7 +3,7 @@ import pytest
 import os
 from rememberscript.strings import process_action, match_trigger
 
-async def dummy(storage):
+async def dummy():
     yield 'hello'
     yield 'world'
 
@@ -50,11 +50,16 @@ async def test_string_processing():
     assert len(result) == 1 and result[0] == 'hello world hello 42'
     assert storage.get('hello', None) == 4 and storage.get('world', None) == 2
 
+    # Test executing coroutines
     result = [a async for a in process_action('{{dummy}}', {'dummy': dummy})]
     assert len(result) == 2 and result[0] == 'hello' and result[1] == 'world'
+    result = [a async for a in process_action('{{dummy()}}', {'dummy': dummy})]
+    assert len(result) == 2 and result[0] == 'hello' and result[1] == 'world'
 
-    # Test executing coroutines
+    result = [a async for a in process_action('{{dummy2}}', {'dummy2': dummy2})]
+    assert len(result) == 1 and result[0] == '3'
     result = [a async for a in process_action('{{dummy2()}}', {'dummy2': dummy2})]
+    assert len(result) == 1 and result[0] == '3'
 
     storage = {'dummy2': dummy2}
     result = [a async for a in process_action('[[foo = dummy2()]]', storage)]
