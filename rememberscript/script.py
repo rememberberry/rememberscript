@@ -13,7 +13,9 @@ import yaml
 from .storage import StorageType
 
 StateType = Dict[str, Any]
-ScriptType = Dict[str, List[StateType]]
+TransitionType = Dict[str, Any]
+StoryType = List[StateType]
+ScriptType = Dict[str, StoryType]
 
 def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptType:
     """Loads a single script yaml and py file,
@@ -68,13 +70,18 @@ def _maybe_nested_str(obj, key):
 
 
 def _validate_transition(transition):
+    valid_keys = {'->', '=', '?', 'return->'}
+    assert len(set(transition.keys()) - valid_keys) == 0
     assert isinstance(transition, dict), 'Transition should be dict'
     assert isinstance(transition.get('->', ''), str), '"to" should be str'
+    assert isinstance(transition.get('return->', ''), str), '"return_to" should be str'
     for key in ['?', '=']:
         _maybe_nested_str(transition, key)
 
 
 def _validate_state(state):
+    valid_keys = {'name', '?', '=enter', '=exit', '=>', 'response'}
+    assert len(set(state.keys()) - valid_keys) == 0
     assert isinstance(state, dict), 'State should be dict'
     assert isinstance(state.get('name', ''), str), 'Name should be string'
     if '=>' in state:
@@ -85,7 +92,7 @@ def _validate_state(state):
     for key in ['=enter', '=exit', '?']:
         _maybe_nested_str(state, key)
 
-    assert isinstance(state.get('response_type', ''), str), 'Response type must be str'
+    assert isinstance(state.get('response', ''), str), 'Response type must be str'
 
 
 def validate_script(script):

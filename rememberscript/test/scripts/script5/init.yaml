@@ -1,0 +1,7 @@
+- name: init
+  =enter: 'in init'
+  =>:
+    - ->: other
+      return->: foo
+- name: foo
+  =enter: "in foo"

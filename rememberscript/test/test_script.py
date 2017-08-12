@@ -63,3 +63,12 @@ async def test_stories():
     await replies_test(m.reply(''), 'in other')
     await replies_test(m.reply(''), 'in init')
     await replies_test(m.reply(''), 'going to foo', 'in foo')
+
+@pytest.mark.asyncio
+async def test_return_to():
+    """Test trigger to next"""
+    storage = {}
+    m = get_machine('script5')
+
+    await replies_test(m.reply(''), 'in other')
+    await replies_test(m.reply(''), 'in foo')

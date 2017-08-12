@@ -3,9 +3,10 @@ from types import FunctionType
 from typing import List, Any, Tuple, AsyncIterator, Union
 from .strings import process_action, match_trigger
 from .storage import StorageType
-from .script import ScriptType, StateType
+from .script import ScriptType, StateType, TransitionType, StoryType
 
-Triggers = List[Tuple[str, str, List[str]]]
+Triggers = List[Tuple[str, str, List[str], Union[str, None]]]
+StackTupleType = Tuple[StoryType, StateType, str]
 
 def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
     """Returns a list of items at key in object, converts to list if existing 
@@ -23,9 +24,10 @@ class RememberMachine:
         self._storage = storage or {}
         # Add storage itself as a private local variable, so it's accessible
         storage['_storage'] = storage
-        self.curr_story: List[StateType] = []
+        self.curr_story: StoryType = []
         self.curr_state: Union[StateType, None] = None
-        self.story_state_stack: List[Tuple[List[StateType], StateType]] = []
+        self.return_to: Union[str, None] = None
+        self.story_state_stack: List[StackTupleType] = []
 
     def init(self):
         """Sets the current state to the init state
@@ -50,16 +52,20 @@ class RememberMachine:
             async for m in self._evaluate_action(action):
                 yield m
 
-        transitions = [(await self._evaluate_trigger(t, msg), next_state, actions)
-                       for t, next_state, actions in self._get_triggers()]
-        _, next_state, transition_actions = max(transitions, key=lambda x: x[0])
-        for action in transition_actions:
+        transitions = [(await self._evaluate_trigger(t, msg), n, ta, rt)
+                       for t, n, ta, rt in self._get_triggers()]
+        _, next_state, trans_actions, self.return_to = max(transitions, key=lambda x: x[0])
+        for action in trans_actions:
             async for m in self._evaluate_action(action):
                 yield m
 
         self._set_state(next_state)
         for action in get_list(self.curr_state, '=enter'):
             async for m in self._evaluate_action(action):
+                yield m
+
+        if self.curr_state.get('response', None) == 'noreply':
+            async for m in self.reply(''):
                 yield m
 
     def _set_state(self, name_or_story: str) -> None:
@@ -71,20 +77,25 @@ class RememberMachine:
             # Reserved keyword for next state in script
             self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)-1]
             return
-        if name_or_story == 'back':
-            self.curr_story, self.curr_state = self.story_state_stack.pop()
+        if name_or_story == 'return':
+            story, state, return_to = self.story_state_stack.pop()
+            if return_to:
+                self.curr_story, self.curr_state = story, state
+                self._set_state(return_to)
+            else:
+                self.curr_story, self.curr_state = story, state
             return
 
         # First check states in the local story
-        story = self.curr_story
-        for state in story:
+        for state in self.curr_story:
             if state.get('name', None) == name_or_story:
                 self.curr_state = state
                 return
 
         # Then check stories in the script
         if name_or_story in self._script:
-            self.story_state_stack.append((self.curr_story, self.curr_state))
+            self.story_state_stack.append((self.curr_story, self.curr_state,
+                                           self.return_to))
             self.curr_story = self._script[name_or_story]
             # Return the init state of the new story
             self._set_state('init')
@@ -94,18 +105,19 @@ class RememberMachine:
 
     def _get_triggers(self) -> Triggers:
         """Returns triples of local and global triggers 
-        with (trigger, state_name, actions)"""
+        with (trigger, state_name, actions, return_to)"""
         # Get triggers local to this state
         local_transitions = get_list(self.curr_state, '=>')
         # Have a default trigger with weight 0, so that any other successful
         # trigger with weight > 0 overrides it
         default_trigger = '{{True}}[[weight = 0]]'
-        loc: Triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='))
+        loc: Triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='),
+                          trans.get('return->', None))
                          for trans in local_transitions
                          for trigger in get_list(trans, '?', [default_trigger])]
 
         # Get triggers reachable from anywhere
-        glob: Triggers = [(trigger, story[0].get('name', 'next'), [])
+        glob: Triggers = [(trigger, story[0].get('name', 'next'), [], None)
                           for story in self._script.values()
                           for trigger in get_list(story[0], '?')]
 
