@@ -25,15 +25,12 @@ def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptT
     py_path = os.path.join(dir_path, story_name+'.pyr')
     script = None
     with open(yaml_path, 'r') as yaml_data:
-        print('loading yaml script at %s' % yaml_path)
         script = yaml.load(yaml_data.read())
 
     if not os.path.exists(py_path):
-        print('python script at %s did not exist' % py_path)
         return script
 
     with open(py_path, 'r') as py_data:
-        print('loading python script at %s' % py_path)
         # Run the .py file and populate self._storage with
         # the resulting local variables
         exec(py_data.read(), {'__name__': '__main__'}, storage)
