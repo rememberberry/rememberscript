@@ -64,7 +64,7 @@ class RememberMachine:
             async for m in self._evaluate_action(action):
                 yield m
 
-        if self.curr_state.get('response', None) == 'noreply':
+        if self.curr_state.get('expect', None) == 'noreply':
             async for m in self.reply(''):
                 yield m
 

@@ -77,7 +77,7 @@ def _validate_transition(transition):
 
 
 def _validate_state(state):
-    valid_keys = {'name', '?', '=enter', '=exit', '=>', 'response'}
+    valid_keys = {'name', '?', '=enter', '=exit', '=>', 'expect'}
     assert len(set(state.keys()) - valid_keys) == 0
     assert isinstance(state, dict), 'State should be dict'
     assert isinstance(state.get('name', ''), str), 'Name should be string'
@@ -89,7 +89,7 @@ def _validate_state(state):
     for key in ['=enter', '=exit', '?']:
         _maybe_nested_str(state, key)
 
-    assert isinstance(state.get('response', ''), str), 'Response type must be str'
+    assert isinstance(state.get('expect', ''), str), 'Expect type must be str'
 
 
 def validate_script(script):
