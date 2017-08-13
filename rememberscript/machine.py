@@ -69,15 +69,20 @@ class RememberMachine:
                 yield m
 
     def _set_state(self, name_or_story: str) -> None:
+        # Check for reserved keywords
         if name_or_story == 'next':
-            # Reserved keyword for next state in script
+            # go to next state in script
             self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)+1]
             return
         if name_or_story == 'prev':
-            # Reserved keyword for next state in script
+            # go to prev state in script
             self.curr_state = self.curr_story[self.curr_story.index(self.curr_state)-1]
             return
+        if name_or_story == 'loopback':
+            # loop back to the same state in script
+            return
         if name_or_story == 'return':
+            # return to previous story in the stack
             story, state, return_to = self.story_state_stack.pop()
             if return_to:
                 self.curr_story, self.curr_state = story, state
