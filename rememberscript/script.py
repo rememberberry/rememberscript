@@ -54,7 +54,7 @@ def _maybe_nested_str(obj, key):
     if isinstance(obj.get(key, ''), str):
         return
 
-    error_msg = '%s was not a maybe_nested_str' % key
+    error_msg = '%s was not a maybe_nested_str: %s\n%s' % (key, str(obj[key]), obj)
     obj = obj[key]
 
     assert isinstance(obj, list), error_msg
