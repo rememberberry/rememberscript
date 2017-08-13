@@ -33,7 +33,11 @@ def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptT
     with open(py_path, 'r') as py_data:
         # Run the .py file and populate self._storage with
         # the resulting local variables
-        exec(py_data.read(), {'__name__': '__main__'}, storage)
+        try:
+            exec(py_data.read(), {'__name__': '__main__'}, storage)
+        except:
+            print('py_path: %s' % py_path)
+            raise
 
     return script
 
