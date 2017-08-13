@@ -52,8 +52,10 @@ class RememberMachine:
             async for m in self._evaluate_action(action):
                 yield m
 
+        default_trans = [(0, 'next', [], None)] # go to next
         transitions = [(await self._evaluate_trigger(t, msg), n, ta, rt)
-                       for t, n, ta, rt in self._get_triggers()]
+                       for t, n, ta, rt in self._get_triggers()] or default_trans
+
         _, next_state, trans_actions, self.return_to = max(transitions, key=lambda x: x[0])
         for action in trans_actions:
             async for m in self._evaluate_action(action):
