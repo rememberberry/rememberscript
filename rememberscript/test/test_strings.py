@@ -68,7 +68,6 @@ async def test_string_processing():
 async def my_matching_fn(string, storage):
     return string == 'hello'
 
-
 @pytest.mark.asyncio
 async def test_match_trigger():
     # Special case with just one evaluated bool result
@@ -99,6 +98,8 @@ async def test_match_trigger():
     # Match using python functions
     storage = {'my_matching_fn': my_matching_fn}
     assert await match_trigger('hello world', '{{my_matching_fn}} world', storage) == True
+
+    assert await match_trigger('hello', '{{my_matching_fn}}', storage) == True
 
     # Test set weight
     storage = {}

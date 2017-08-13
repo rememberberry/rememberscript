@@ -122,7 +122,7 @@ async def match_trigger(string: str, trigger: str, storage: StorageType=None) ->
         else:
             regex_parts.append(str(part))
 
-    regex = re.compile(''.join(regex_parts))
+    regex = re.compile('^%s$' % ''.join(regex_parts))
     m = regex.match(string)
     if m is None:
         return False
