@@ -1,11 +1,11 @@
 - name: init
-  =>:
+  =?>:
     - ?: "{{True}}"
 - name: state1
-  =enter: "state1"
-  =>: 
+  =>+: "state1"
+  =?>: 
     ?: "{{True}}"
-    ->: "prev"
-    =: "to init"
+    =>: "prev"
+    +: "to init"
 - name: state2
-  =enter: "state2"
+  =>+: "state2"

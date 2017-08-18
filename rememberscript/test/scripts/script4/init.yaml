@@ -1,10 +1,10 @@
 - name: init
-  =enter: 'in init'
-  =>:
-    - ->: other
+  =>+: 'in init'
+  =?>:
+    - =>: other
       ?: "{{not var}}"
-    - ->: foo
+    - =>: foo
       ?: "{{var}}"
-      =: "going to foo"
+      +: "going to foo"
 - name: foo
-  =enter: "in foo"
+  =>+: "in foo"

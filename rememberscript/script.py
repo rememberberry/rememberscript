@@ -12,6 +12,17 @@ from typing import Dict, List, Any
 import yaml
 from .storage import StorageType
 
+
+TRIGGER = '?'
+ENTER_ACTION = '=>+'
+EXIT_ACTION = '+=>'
+ACTION = '+'
+STATE_NAME = 'name'
+TRANSITIONS = '=?>'
+RETURN_TO = 'return=>'
+EXPECT = 'expect'
+TO = '=>'
+
 StateType = Dict[str, Any]
 TransitionType = Dict[str, Any]
 StoryType = List[StateType]
@@ -71,29 +82,31 @@ def _maybe_nested_str(obj, key):
 
 
 def _validate_transition(transition):
-    valid_keys = {'->', '=', '?', 'return->'}
+    valid_keys = {TO, ACTION, TRIGGER, RETURN_TO}
     assert len(set(transition.keys()) - valid_keys) == 0
     assert isinstance(transition, dict), 'Transition should be dict'
-    assert isinstance(transition.get('->', ''), str), '"to" should be str'
-    assert isinstance(transition.get('return->', ''), str), '"return_to" should be str'
-    for key in ['?', '=']:
+    assert isinstance(transition.get(TO, ''), str), '"to" should be str'
+    assert isinstance(transition.get(RETURN_TO, ''), str), '"return_to" should be str'
+    for key in [TRIGGER, ACTION]:
         _maybe_nested_str(transition, key)
 
 
 def _validate_state(state):
-    valid_keys = {'name', '?', '=enter', '=exit', '=>', 'expect'}
+    valid_keys = {STATE_NAME, TRIGGER, ENTER_ACTION, EXIT_ACTION, TRANSITIONS,
+                  EXPECT}
     assert len(set(state.keys()) - valid_keys) == 0
     assert isinstance(state, dict), 'State should be dict'
-    assert isinstance(state.get('name', ''), str), 'Name should be string'
-    if '=>' in state:
-        trans = state['=>']
+    assert isinstance(state.get(STATE_NAME, ''), str), 'Name should be string'
+    if TRANSITIONS in state:
+        trans = state[TRANSITIONS]
         trans = [trans] if isinstance(trans, dict) else trans
         for t in trans:
             _validate_transition(t)
-    for key in ['=enter', '=exit', '?']:
+    for key in [ENTER_ACTION, EXIT_ACTION, TO]:
         _maybe_nested_str(state, key)
 
-    assert isinstance(state.get('expect', ''), str), 'Expect type must be str'
+    assert isinstance(state.get(EXPECT, ''), str), 'Expect type must be str'
+    assert state.get(EXPECT, '') in ['', 'noreply', 'password']
 
 
 def validate_script(script):
@@ -102,7 +115,7 @@ def validate_script(script):
     assert 'init' in script, "There needs to be an 'init' story in the script"
 
     for _, states in script.items():
-        assert len(states) > 0 and states[0]['name'] == 'init', 'First state should be init'
+        assert len(states) > 0 and states[0][STATE_NAME] == 'init', 'First state should be init'
         assert isinstance(states, list), 'States should be list'
         for state in states:
             _validate_state(state)

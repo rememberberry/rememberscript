@@ -4,6 +4,8 @@ from typing import List, Any, Tuple, AsyncIterator, Union
 from .strings import process_action, match_trigger
 from .storage import StorageType
 from .script import ScriptType, StateType, TransitionType, StoryType
+from .script import (TRIGGER, ENTER_ACTION, EXIT_ACTION, ACTION, STATE_NAME,
+                    TRANSITIONS, RETURN_TO, EXPECT, TO)
 
 Triggers = List[Tuple[str, str, List[str], Union[str, None]]]
 StackTupleType = Tuple[StoryType, StateType, str]
@@ -48,13 +50,13 @@ class RememberMachine:
         Note: this is an async generator coroutine"""
         self._storage['msg'] = msg
 
-        for action in get_list(self.curr_state, '=exit'):
+        for action in get_list(self.curr_state, EXIT_ACTION):
             async for m in self._evaluate_action(action):
                 yield m
 
-        default_trans = [(0, 'next', [], None)] # go to next
+        default_trans: List[Any] = [(0.0, 'next', [], None)] # go to next
         transitions = [(await self._evaluate_trigger(t, msg), n, ta, rt)
-                       for t, n, ta, rt in self._get_triggers()] or default_trans
+                       for t, n, ta, rt in self._get_triggers()] + default_trans
 
         _, next_state, trans_actions, self.return_to = max(transitions, key=lambda x: x[0])
         for action in trans_actions:
@@ -62,11 +64,11 @@ class RememberMachine:
                 yield m
 
         self._set_state(next_state)
-        for action in get_list(self.curr_state, '=enter'):
+        for action in get_list(self.curr_state, ENTER_ACTION):
             async for m in self._evaluate_action(action):
                 yield m
 
-        if self.curr_state.get('expect', None) == 'noreply':
+        if self.curr_state.get(EXPECT, None) == 'noreply':
             async for m in self.reply(''):
                 yield m
 
@@ -95,7 +97,7 @@ class RememberMachine:
 
         # First check states in the local story
         for state in self.curr_story:
-            if state.get('name', None) == name_or_story:
+            if state.get(STATE_NAME, None) == name_or_story:
                 self.curr_state = state
                 return
 
@@ -114,19 +116,19 @@ class RememberMachine:
         """Returns triples of local and global triggers 
         with (trigger, state_name, actions, return_to)"""
         # Get triggers local to this state
-        local_transitions = get_list(self.curr_state, '=>')
+        local_transitions = get_list(self.curr_state, TRANSITIONS)
         # Have a default trigger with weight 0, so that any other successful
         # trigger with weight > 0 overrides it
-        default_trigger = '{{True}}[[weight = 0]]'
-        loc: Triggers = [(trigger, trans.get('->', 'next'), get_list(trans, '='),
-                          trans.get('return->', None))
+        default = ["{{True}}[[weight = 0]]"]
+        loc: Triggers = [(trigger, trans.get(TO, 'next'), get_list(trans, ACTION),
+                         trans.get(RETURN_TO, None))
                          for trans in local_transitions
-                         for trigger in get_list(trans, '?', [default_trigger])]
+                         for trigger in get_list(trans, TRIGGER, default)]
 
         # Get triggers reachable from anywhere
-        glob: Triggers = [(trigger, story[0].get('name', 'next'), [], None)
+        glob: Triggers = [(trigger, story[0].get(STATE_NAME, 'next'), [], None)
                           for story in self._script.values()
-                          for trigger in get_list(story[0], '?')]
+                          for trigger in get_list(story[0], TRIGGER)]
 
         return loc + glob
 

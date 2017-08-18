@@ -1,22 +1,22 @@
 - name: init
-  =>:
+  =?>:
     - ?: "{{not initial_setup_done}}"
-      ->: initial_setup
-      =: Welcome!
+      =>: initial_setup
+      +: Welcome!
     - ?: "{{initial_setup_done}}"
-      ->: study
-      =: Welcome back!
+      =>: study
+      +: Welcome back!
 - name: initial_setup
-  =enter: "Set a username:"
-  =exit: 
+  =>+: "Set a username:"
+  +=>: 
     - "[[username = msg]]"
     - "[[initial_setup_done = True]]"
     - Thanks, we're all set up
-  =>:
+  =?>:
     ?: "{{True}}"
-    ->: study
+    =>: study
 - name: study
-  =enter: "Lets study"
+  =>+: "Lets study"
   ?: 
     - study
     - I want to study

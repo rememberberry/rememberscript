@@ -1,5 +1,5 @@
 - name: init
-  =enter: in other
-  =>:
-    ->: return
-    =: "[[var=True]]"
+  =>+: in other
+  =?>:
+    =>: return
+    +: "[[var=True]]"

@@ -1,4 +1,4 @@
 - name: init
-  =enter: in other
-  =>:
-    ->: return
+  =>+: in other
+  =?>:
+    =>: return
