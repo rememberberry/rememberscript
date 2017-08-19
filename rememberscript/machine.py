@@ -1,3 +1,4 @@
+import json
 import traceback
 from types import FunctionType
 from typing import List, Any, Tuple, AsyncIterator, Union
@@ -132,7 +133,8 @@ class RememberMachine:
 
         return loc + glob
 
-    async def _evaluate_action(self, action: str) -> AsyncIterator[Union[str]]:
+    async def _evaluate_action(self, action: Union[str, dict]) -> AsyncIterator[Union[str]]:
+        action = action if isinstance(action, str) else json.dumps(action)
         async for msg in process_action(action, self._storage):
             yield msg
 

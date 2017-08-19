@@ -42,7 +42,7 @@ def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptT
         return script
 
     with open(py_path, 'r') as py_data:
-        # Run the .py file and populate self._storage with
+        # Run the .py file and populate storage with
         # the resulting local variables
         try:
             exec(py_data.read(), {'__name__': '__main__'}, storage)
@@ -65,20 +65,22 @@ def load_scripts_dir(path: str, storage: StorageType) -> Dict[str, ScriptType]:
     return scripts
 
 
-def _maybe_nested_str(obj, key):
-    if isinstance(obj.get(key, ''), str):
-        return
+def _maybe_nested_types(obj, key, types):
+    for t in types:
+        if key not in obj or isinstance(obj[key], t):
+            return
 
-    error_msg = '%s was not a maybe_nested_str: %s\n%s' % (key, str(obj[key]), obj)
+    error_msg = '%s was not a maybe_nested_types: %s\n%s' % (key, str(obj[key]), obj)
     obj = obj[key]
 
     assert isinstance(obj, list), error_msg
     for item_outer in obj:
-        if isinstance(item_outer, list):
-            for item_inner in item_outer:
-                assert isinstance(item_inner, str), error_msg
-        else:
-            assert isinstance(item_outer, str), error_msg
+        items = item_outer if isinstance(item_outer, list) else [item_outer]
+        for item in items:
+            is_one_of = False
+            for t in types:
+                is_one_of = is_one_of or isinstance(item, t)
+            assert is_one_of, error_msg
 
 
 def _validate_transition(transition):
@@ -87,8 +89,8 @@ def _validate_transition(transition):
     assert isinstance(transition, dict), 'Transition should be dict'
     assert isinstance(transition.get(TO, ''), str), '"to" should be str'
     assert isinstance(transition.get(RETURN_TO, ''), str), '"return_to" should be str'
-    for key in [TRIGGER, ACTION]:
-        _maybe_nested_str(transition, key)
+    _maybe_nested_types(transition, TRIGGER, [str])
+    _maybe_nested_types(transition, ACTION, [str, dict])
 
 
 def _validate_state(state):
@@ -102,8 +104,10 @@ def _validate_state(state):
         trans = [trans] if isinstance(trans, dict) else trans
         for t in trans:
             _validate_transition(t)
-    for key in [ENTER_ACTION, EXIT_ACTION, TO]:
-        _maybe_nested_str(state, key)
+
+    _maybe_nested_types(state, TO, [str])
+    for key in [ENTER_ACTION, EXIT_ACTION]:
+        _maybe_nested_types(state, key, [str, dict])
 
     assert isinstance(state.get(EXPECT, ''), str), 'Expect type must be str'
     assert state.get(EXPECT, '') in ['', 'noreply', 'password']
