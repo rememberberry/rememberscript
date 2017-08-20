@@ -1,12 +1,13 @@
 import json
 import traceback
+from copy import deepcopy
 from types import FunctionType
 from typing import List, Any, Tuple, AsyncIterator, Union
 from .strings import process_action, match_trigger
 from .storage import StorageType
 from .script import ScriptType, StateType, TransitionType, StoryType
 from .script import (TRIGGER, ENTER_ACTION, EXIT_ACTION, ACTION, STATE_NAME,
-                    TRANSITIONS, RETURN_TO, EXPECT, TO)
+                    TRANSITIONS, RETURN_TO, NOREPLY, EXTRA, TO)
 
 Triggers = List[Tuple[str, str, List[str], Union[str, None]]]
 StackTupleType = Tuple[StoryType, StateType, str]
@@ -17,6 +18,15 @@ def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
     if key not in obj:
         return default
     return obj[key] if isinstance(obj[key], list) else [obj[key]]
+
+
+def _make_msg(msg: Union[str, dict], extra: dict={}) -> str:
+    msg = deepcopy(msg)
+    if isinstance(msg, str) or not isinstance(msg, dict):
+        msg = {'msg': str(msg)}
+    msg.update(extra.items())
+    return json.dumps(msg)
+
 
 class RememberMachine:
     """A finite state machine (FSM) that is initialized with a script,
@@ -52,24 +62,22 @@ class RememberMachine:
         self._storage['msg'] = msg
 
         for action in get_list(self.curr_state, EXIT_ACTION):
-            async for m in self._evaluate_action(action):
+            extra = self.curr_state.get(EXTRA, {})
+            async for m in self._evaluate_action(action, extra):
                 yield m
 
-        default_trans: List[Any] = [(0.0, 'next', [], None)] # go to next
-        transitions = [(await self._evaluate_trigger(t, msg), n, ta, rt)
-                       for t, n, ta, rt in self._get_triggers()] + default_trans
-
-        _, next_state, trans_actions, self.return_to = max(transitions, key=lambda x: x[0])
+        next_state, trans_actions, self.return_to, extra = await self._get_max_transition(msg)
         for action in trans_actions:
-            async for m in self._evaluate_action(action):
+            async for m in self._evaluate_action(action, extra):
                 yield m
 
         self._set_state(next_state)
         for action in get_list(self.curr_state, ENTER_ACTION):
-            async for m in self._evaluate_action(action):
+            extra = self.curr_state.get(EXTRA, {})
+            async for m in self._evaluate_action(action, extra):
                 yield m
 
-        if self.curr_state.get(EXPECT, None) == 'noreply':
+        if self.curr_state.get(NOREPLY, False):
             async for m in self.reply(''):
                 yield m
 
@@ -113,30 +121,38 @@ class RememberMachine:
         else:
             raise ValueError('No such state or story: %s' % name_or_story)
 
-    def _get_triggers(self) -> Triggers:
+    async def _get_max_transition(self, msg) -> Tuple[str, list, Union[str, None], dict]:
         """Returns triples of local and global triggers 
         with (trigger, state_name, actions, return_to)"""
         # Get triggers local to this state
-        local_transitions = get_list(self.curr_state, TRANSITIONS)
         # Have a default trigger with weight 0, so that any other successful
         # trigger with weight > 0 overrides it
         default = ["{{True}}[[weight = 0]]"]
         loc: Triggers = [(trigger, trans.get(TO, 'next'), get_list(trans, ACTION),
-                         trans.get(RETURN_TO, None))
-                         for trans in local_transitions
+                         trans.get(RETURN_TO, None), trans.get(EXTRA, {}))
+                         for trans in get_list(self.curr_state, TRANSITIONS)
                          for trigger in get_list(trans, TRIGGER, default)]
-
         # Get triggers reachable from anywhere
         glob: Triggers = [(trigger, story[0].get(STATE_NAME, 'next'), [], None)
                           for story in self._script.values()
                           for trigger in get_list(story[0], TRIGGER)]
 
-        return loc + glob
+        # If there are no successful local or global triggers, default to next state
+        max_trigger = 'next', [], None, {}
+        max_weight = -1.0
+        for trigger, *rest in loc + glob:
+            weight = await self._evaluate_trigger(trigger, msg)
+            if weight > max_weight:
+                max_trigger = rest
+                max_weight = weight
+        return max_trigger
 
-    async def _evaluate_action(self, action: Union[str, dict]) -> AsyncIterator[Union[str]]:
-        action = action if isinstance(action, str) else json.dumps(action)
+    async def _evaluate_action(self, action: Union[str, dict], extra: dict) -> AsyncIterator[Union[str]]:
+        if isinstance(action, dict):
+            yield json.dumps(action)
+            return
         async for msg in process_action(action, self._storage):
-            yield msg
+            yield _make_msg(msg, extra)
 
     async def _evaluate_trigger(self, trigger: str, msg: str) -> float:
         self._storage['weight'] = 1.0 # set default weight

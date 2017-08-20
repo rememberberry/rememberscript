@@ -20,7 +20,8 @@ ACTION = '+'
 STATE_NAME = 'name'
 TRANSITIONS = '=?>'
 RETURN_TO = 'return=>'
-EXPECT = 'expect'
+NOREPLY = 'noreply'
+EXTRA = 'extra'
 TO = '=>'
 
 StateType = Dict[str, Any]
@@ -89,13 +90,14 @@ def _validate_transition(transition):
     assert isinstance(transition, dict), 'Transition should be dict'
     assert isinstance(transition.get(TO, ''), str), '"to" should be str'
     assert isinstance(transition.get(RETURN_TO, ''), str), '"return_to" should be str'
+    assert isinstance(transition.get(EXTRA, {}), dict), 'extra type must be dict'
     _maybe_nested_types(transition, TRIGGER, [str])
     _maybe_nested_types(transition, ACTION, [str, dict])
 
 
 def _validate_state(state):
     valid_keys = {STATE_NAME, TRIGGER, ENTER_ACTION, EXIT_ACTION, TRANSITIONS,
-                  EXPECT}
+                  NOREPLY, EXTRA}
     assert len(set(state.keys()) - valid_keys) == 0
     assert isinstance(state, dict), 'State should be dict'
     assert isinstance(state.get(STATE_NAME, ''), str), 'Name should be string'
@@ -109,8 +111,8 @@ def _validate_state(state):
     for key in [ENTER_ACTION, EXIT_ACTION]:
         _maybe_nested_types(state, key, [str, dict])
 
-    assert isinstance(state.get(EXPECT, ''), str), 'Expect type must be str'
-    assert state.get(EXPECT, '') in ['', 'noreply', 'password']
+    assert isinstance(state.get(NOREPLY, False), bool), 'noreply type must be bool'
+    assert isinstance(state.get(EXTRA, {}), dict), 'extra type must be dict'
 
 
 def validate_script(script):

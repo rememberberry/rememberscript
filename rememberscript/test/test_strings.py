@@ -22,7 +22,7 @@ async def test_string_processing():
     assert len(storage) == 0
 
     result = [a async for a in process_action('{{42}}', storage)]
-    assert len(result) == 1 and result[0] == '42'
+    assert len(result) == 1 and result[0] == 42
     assert len(storage) == 0
 
     result = [a async for a in process_action('{{"hello world"}} hello {{42}}',
@@ -57,9 +57,9 @@ async def test_string_processing():
     assert len(result) == 2 and result[0] == 'hello' and result[1] == 'world'
 
     result = [a async for a in process_action('{{dummy2}}', {'dummy2': dummy2})]
-    assert len(result) == 1 and result[0] == '3'
+    assert len(result) == 1 and result[0] == 3
     result = [a async for a in process_action('{{dummy2()}}', {'dummy2': dummy2})]
-    assert len(result) == 1 and result[0] == '3'
+    assert len(result) == 1 and result[0] == 3
 
     storage = {'dummy2': dummy2}
     result = [a async for a in process_action('[[foo = dummy2()]]', storage)]

@@ -98,13 +98,13 @@ async def process_action(string: str, storage: StorageType=None) -> AsyncIterato
         if inspect.isasyncgen(part):
             async for result in part:
                 if result not in [None, '']:
-                    yield str(result)
+                    yield result
         elif inspect.isgenerator(part):
             for result in part:
                 if result not in [None, '']:
-                    yield str(result)
+                    yield result
         else:
-            yield str(part)
+            yield part
     else:
         parts = list(map(lambda x: str(x) if not isinstance(x, str) else x, parts))
         result = ''.join(parts)
