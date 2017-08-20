@@ -23,7 +23,7 @@ def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
 def _make_msg(msg: Union[str, dict], extra: dict={}) -> str:
     msg = deepcopy(msg)
     if isinstance(msg, str) or not isinstance(msg, dict):
-        msg = {'msg': str(msg)}
+        msg = {'content': str(msg)}
     msg.update(extra.items())
     return json.dumps(msg)
 
