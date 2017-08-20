@@ -21,7 +21,12 @@ async def execute_string(string: str, storage: StorageType) -> str:
     execs = re.compile('%s(.*?)%s' % (esc(EXEC_START), esc(EXEC_END))).findall(string)
     for ex in execs:
         # Exec with session storage to store local variables
-        exec(ex, {}, storage)
+        try:
+            exec(ex, {}, storage)
+        except:
+            print('exec failed "[[%s]]"' % ex)
+            raise
+
         for key in list(storage.keys()):
             val = storage[key]
             if inspect.iscoroutine(val):
@@ -41,7 +46,12 @@ async def evaluate_split_string(string: str, storage: StorageType) -> AsyncItera
     evals = re.compile('%s(.*?)%s' % (esc(EVAL_START), esc(EVAL_END))).findall(string)
     for ev in evals:
         # Eval with session storage to provide local variables
-        eval_result = eval(ev, {}, storage)
+        try:
+            eval_result = eval(ev, {}, storage)
+        except:
+            print('eval failed "{{%s}}"' % ev)
+            raise
+
         if inspect.iscoroutine(eval_result):
             eval_result = await eval_result
 
