@@ -1,12 +1,13 @@
 """Persistent storage for RememberMachine"""
 import os
+import asyncio
 import pickle
 import inspect
+from functools import partial
 from collections import MutableMapping
 from typing import MutableMapping as MutableMappingType
 from typing import Any
 from types import FunctionType
-import aiofiles
 
 StorageType = MutableMappingType[str, Any]
 
@@ -23,6 +24,17 @@ def _sync_var(key, var):
             not inspect.isclass(var) and
             not inspect.ismodule(var))
 
+def _write(data, filename):
+    with open(filename, 'wb') as f:
+        f.write(data)
+
+def _load(filename):
+    if not os.path.exists(filename):
+        return
+
+    with open(filename, 'rb') as f:
+        return f.read()
+
 class FileStorage(MutableMapping):
     """A storage class that behaves like dict, but persists public entries to file
     Note: private entries start with an _ (underscore)"""
@@ -36,8 +48,10 @@ class FileStorage(MutableMapping):
         if not self.filename:
             return
         if os.path.exists(self.filename):
-            async with aiofiles.open(self.filename, mode='rb') as f:
-                self._dict.update(pickle.loads(await f.read()).items())
+            data = await asyncio.get_event_loop().run_in_executor(
+                None, partial(_load, self.filename))
+            if data is not None:
+                self._dict.update(pickle.loads(data).items())
 
     async def sync(self):
         """Sync to filename"""
@@ -47,9 +61,9 @@ class FileStorage(MutableMapping):
         # unpickleable object
         sync_vars = {key: var for key, var in self._dict.items() if _sync_var(key, var)}
 
-        # Dump to file
-        async with aiofiles.open(self.filename, mode='wb') as f:
-            await f.write(pickle.dumps(sync_vars))
+        # Dump to file (note: don't await)
+        asyncio.get_event_loop().run_in_executor(
+            None, partial(_write, pickle.dumps(sync_vars), self.filename))
 
     def __delitem__(self, key):
         del self._dict[key]
