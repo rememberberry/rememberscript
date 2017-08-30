@@ -1,5 +1,6 @@
 import re
 import inspect
+import traceback
 from types import FunctionType
 from typing import MutableMapping, Any, AsyncIterator, Union, List
 from .storage import StorageType
@@ -25,6 +26,7 @@ async def execute_string(string: str, storage: StorageType) -> str:
             exec(ex, {}, storage)
         except:
             print('exec failed "[[%s]]"' % ex)
+            traceback.print_exc()
             raise
 
         for key in list(storage.keys()):
@@ -50,6 +52,7 @@ async def evaluate_split_string(string: str, storage: StorageType) -> AsyncItera
             eval_result = eval(ev, {}, storage)
         except:
             print('eval failed "{{%s}}"' % ev)
+            traceback.print_exc()
             raise
 
         if inspect.iscoroutine(eval_result):
