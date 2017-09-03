@@ -86,7 +86,8 @@ def _maybe_nested_types(obj, key, types):
 
 def _validate_transition(transition):
     valid_keys = {TO, ACTION, TRIGGER, RETURN_TO}
-    assert len(set(transition.keys()) - valid_keys) == 0
+    key_diff = set(transition.keys()) - valid_keys
+    assert len(key_diff) == 0, 'Unkown keys %s' % str(key_diff)
     assert isinstance(transition, dict), 'Transition should be dict'
     assert isinstance(transition.get(TO, ''), str), '"to" should be str'
     assert isinstance(transition.get(RETURN_TO, ''), str), '"return_to" should be str'
