@@ -98,7 +98,7 @@ def _validate_transition(transition):
 
 def _validate_state(state):
     valid_keys = {STATE_NAME, TRIGGER, ENTER_ACTION, EXIT_ACTION, TRANSITIONS,
-                  NOREPLY, EXTRA}
+                  NOREPLY, EXTRA, RETURN_TO}
     assert len(set(state.keys()) - valid_keys) == 0
     assert isinstance(state, dict), 'State should be dict'
     assert isinstance(state.get(STATE_NAME, ''), str), 'Name should be string'
@@ -114,6 +114,7 @@ def _validate_state(state):
 
     assert isinstance(state.get(NOREPLY, False), bool), 'noreply type must be bool'
     assert isinstance(state.get(EXTRA, {}), dict), 'extra type must be dict'
+    assert isinstance(state.get(RETURN_TO, ''), str), '"return_to" should be str'
 
 
 def validate_script(script):

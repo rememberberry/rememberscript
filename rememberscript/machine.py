@@ -9,7 +9,8 @@ from .script import ScriptType, StateType, TransitionType, StoryType
 from .script import (TRIGGER, ENTER_ACTION, EXIT_ACTION, ACTION, STATE_NAME,
                     TRANSITIONS, RETURN_TO, NOREPLY, EXTRA, TO)
 
-Triggers = List[Tuple[str, str, List[str], Union[str, None]]]
+Transition = Tuple[str, List[str], Union[str, None], dict]
+Triggers = List[Tuple[str, Transition]]
 StackTupleType = Tuple[StoryType, StateType, str]
 
 def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
@@ -121,31 +122,33 @@ class RememberMachine:
         else:
             raise ValueError('No such state or story: %s' % name_or_story)
 
-    async def _get_max_transition(self, msg) -> Tuple[str, list, Union[str, None], dict]:
+    async def _get_max_transition(self, msg) -> Transition:
         """Returns triples of local and global triggers 
         with (trigger, state_name, actions, return_to)"""
         # Get triggers local to this state
         # Have a default trigger with weight 0, so that any other successful
         # trigger with weight > 0 overrides it
-        default = ["{{True}}[[weight = 0]]"]
-        loc: Triggers = [(trigger, trans.get(TO, 'next'), get_list(trans, ACTION),
-                         trans.get(RETURN_TO, None), trans.get(EXTRA, {}))
+        default_trigger = ["{{True}}[[weight = 0]]"]
+        default_return = self.curr_state.get(RETURN_TO, None)
+        loc: Triggers = [(trigger, (trans.get(TO, 'next'), get_list(trans, ACTION),
+                         trans.get(RETURN_TO, default_return), trans.get(EXTRA, {})))
                          for trans in get_list(self.curr_state, TRANSITIONS)
-                         for trigger in get_list(trans, TRIGGER, default)]
+                         for trigger in get_list(trans, TRIGGER, default_trigger)]
+
         # Get triggers reachable from anywhere
-        glob: Triggers = [(trigger, story[0].get(STATE_NAME, 'next'), [], None)
-                          for story in self._script.values()
+        glob: Triggers = [(trigger, (story_name, [], default_return, {}))
+                          for story_name, story in self._script.items()
                           for trigger in get_list(story[0], TRIGGER)]
 
         # If there are no successful local or global triggers, default to next state
-        max_trigger = 'next', [], None, {}
+        max_transition: Transition = ('next', [], None, {})
         max_weight = -1.0
-        for trigger, *rest in loc + glob:
+        for trigger, transition in loc + glob:
             weight = await self._evaluate_trigger(trigger, msg)
             if weight > max_weight:
-                max_trigger = rest
+                max_transition = transition
                 max_weight = weight
-        return max_trigger
+        return max_transition
 
     async def _evaluate_action(self, action: Union[str, dict], extra: dict) -> AsyncIterator[Union[str]]:
         if isinstance(action, dict):
