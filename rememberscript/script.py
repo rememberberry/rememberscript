@@ -34,7 +34,7 @@ def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptT
     Saves the local variables in the py file to 'storage'
     """
     yaml_path = os.path.join(dir_path, story_name+'.yaml')
-    py_path = os.path.join(dir_path, story_name+'.pyr')
+    py_path = os.path.join(dir_path, story_name+'.py')
     script = None
     with open(yaml_path, 'r') as yaml_data:
         script = yaml.load(yaml_data.read())
@@ -59,8 +59,6 @@ def load_scripts_dir(path: str, storage: StorageType) -> Dict[str, ScriptType]:
     scripts = {}
     for yaml_filename in glob.glob(os.path.join(path, '*.yaml')):
         story_name = os.path.basename(yaml_filename).split('.yaml')[0]
-        # NOTE: use 'pyr' extension instead of 'py' to indicate that
-        # they are not executable on their own or part of any module
         dir_path = os.path.dirname(yaml_filename)
         scripts[story_name] = load_script(dir_path, story_name, storage)
     return scripts
