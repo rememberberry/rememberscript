@@ -5,6 +5,7 @@ from types import FunctionType
 from typing import List, Any, Tuple, AsyncIterator, Union
 from .strings import process_action, match_trigger
 from .storage import StorageType
+from .misc import get_list
 from .script import ScriptType, StateType, TransitionType, StoryType
 from .script import (TRIGGER, ENTER_ACTION, EXIT_ACTION, ACTION, STATE_NAME,
                     TRANSITIONS, RETURN_TO, NOREPLY, EXTRA, TO)
@@ -12,14 +13,6 @@ from .script import (TRIGGER, ENTER_ACTION, EXIT_ACTION, ACTION, STATE_NAME,
 Transition = Tuple[str, List[str], Union[str, None], dict]
 Triggers = List[Tuple[str, Transition]]
 StackTupleType = Tuple[StoryType, StateType, str]
-
-def get_list(obj: Any, key: str, default: List[Any]=[]) -> List[Any]:
-    """Returns a list of items at key in object, converts to list if existing 
-    item is not list"""
-    if key not in obj:
-        return default
-    return obj[key] if isinstance(obj[key], list) else [obj[key]]
-
 
 def _make_msg(msg: Union[str, dict], extra: dict={}) -> str:
     msg = deepcopy(msg)

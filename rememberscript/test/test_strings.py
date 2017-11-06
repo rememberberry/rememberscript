@@ -80,6 +80,9 @@ async def test_match_trigger():
     assert await match_trigger('hello', '{{"hello"}}') == True
     assert await match_trigger('hello world', 'hello {{"world"}}') == True
 
+    # Regex matching is using ^ and $ behind the scenes:
+    assert await match_trigger('oh hello world!', 'hello world') == False
+
     # Matching against arrays
     assert await match_trigger('hello', '{{words}}', {'words': ['hello']}) == True
     words = ['hello', 'world']

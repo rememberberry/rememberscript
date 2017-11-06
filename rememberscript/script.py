@@ -8,9 +8,12 @@ or not flexible enough to represent the schema needed
 """
 import os
 import glob
-from typing import Dict, List, Any
 import yaml
+import asyncio
+from typing import Dict, List, Any
 from .storage import StorageType
+from .strings import execute_string, match_trigger
+from .misc import get_list
 
 
 TRIGGER = '?'
@@ -23,6 +26,8 @@ RETURN_TO = 'return=>'
 NOREPLY = 'noreply'
 EXTRA = 'extra'
 TO = '=>'
+SHOULD_TRIGGER = 'should_trigger'
+SHOULD_NOT_TRIGGER = 'should_not_trigger'
 
 StateType = Dict[str, Any]
 TransitionType = Dict[str, Any]
@@ -82,8 +87,32 @@ def _maybe_nested_types(obj, key, types):
             assert is_one_of, error_msg
 
 
-def _validate_transition(transition):
-    valid_keys = {TO, ACTION, TRIGGER, RETURN_TO}
+async def _validate_trigger_examples(transition):
+    triggers = get_list(transition, TRIGGER)
+    examples = ([(msg, True) for msg in get_list(transition, SHOULD_TRIGGER)] +
+                [(msg, False) for msg in get_list(transition, SHOULD_NOT_TRIGGER)])
+
+    # For each test example, first execute the string and use the final
+    # string as the message; unless empty (emtpy messages are for setting storage
+    # variables)
+    storage = {}
+    for msg, should_trigger in examples:
+        msg = await execute_string(msg, storage)
+        if msg == '':
+            continue
+
+        match = False
+        for trigger in triggers:
+            match = match or await match_trigger(msg, trigger, storage)
+
+        info = '"%s" %s but should have %s' % (
+            msg, 'triggered' if match else "didn't trigger",
+            'triggered' if should_trigger else "not triggered")
+        assert match == should_trigger, info
+
+
+async def _validate_transition(transition):
+    valid_keys = {TO, ACTION, TRIGGER, RETURN_TO, SHOULD_TRIGGER, SHOULD_NOT_TRIGGER}
     key_diff = set(transition.keys()) - valid_keys
     assert len(key_diff) == 0, 'Unkown keys %s' % str(key_diff)
     assert isinstance(transition, dict), 'Transition should be dict'
@@ -92,9 +121,12 @@ def _validate_transition(transition):
     assert isinstance(transition.get(EXTRA, {}), dict), 'extra type must be dict'
     _maybe_nested_types(transition, TRIGGER, [str])
     _maybe_nested_types(transition, ACTION, [str, dict])
+    _maybe_nested_types(transition, SHOULD_TRIGGER, [str])
+    _maybe_nested_types(transition, SHOULD_NOT_TRIGGER, [str])
+    await _validate_trigger_examples(transition)
 
 
-def _validate_state(state):
+async def _validate_state(state):
     valid_keys = {STATE_NAME, TRIGGER, ENTER_ACTION, EXIT_ACTION, TRANSITIONS,
                   NOREPLY, EXTRA, RETURN_TO}
     assert len(set(state.keys()) - valid_keys) == 0
@@ -104,7 +136,7 @@ def _validate_state(state):
         trans = state[TRANSITIONS]
         trans = [trans] if isinstance(trans, dict) else trans
         for t in trans:
-            _validate_transition(t)
+            await _validate_transition(t)
 
     _maybe_nested_types(state, TO, [str])
     for key in [ENTER_ACTION, EXIT_ACTION]:
@@ -115,7 +147,7 @@ def _validate_state(state):
     assert isinstance(state.get(RETURN_TO, ''), str), '"return_to" should be str'
 
 
-def validate_script(script):
+async def validate_script(script):
     """Validate a loaded yaml script"""
     assert isinstance(script, dict), 'Script should be dict'
     assert 'init' in script, "There needs to be an 'init' story in the script"
@@ -124,6 +156,6 @@ def validate_script(script):
         assert len(states) > 0 and states[0][STATE_NAME] == 'init', 'First state should be init'
         assert isinstance(states, list), 'States should be list'
         for state in states:
-            _validate_state(state)
+            await _validate_state(state)
 
     #TODO: validate that referenced states exist
