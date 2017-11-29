@@ -1,0 +1,12 @@
+- name: init
+  =?>:
+    - ?: "test([0-9])+"
+      =>: state1
+      should_trigger: 
+        - test1
+        - test9
+      should_not_trigger:
+        - test0
+        - test
+        - something else
+- name: state1
