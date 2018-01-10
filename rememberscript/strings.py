@@ -1,9 +1,12 @@
 import re
 import inspect
 import traceback
+import logging
 from types import FunctionType
 from typing import MutableMapping, Any, AsyncIterator, Union, List
 from .storage import StorageType
+
+logger = logging.getLogger('rememberscript')
 
 EVAL_START = '{{'
 EVAL_END = '}}'
@@ -25,8 +28,8 @@ async def execute_string(string: str, storage: StorageType) -> str:
         try:
             exec(ex, {}, storage)
         except:
-            print('exec failed "[[%s]]"' % ex)
-            traceback.print_exc()
+            logger.error('exec failed "[[%s]]"' % ex)
+            logger.error(traceback.format_exc())
             raise
 
         for key in list(storage.keys()):
@@ -51,8 +54,8 @@ async def evaluate_split_string(string: str, storage: StorageType) -> AsyncItera
         try:
             eval_result = eval(ev, {}, storage)
         except:
-            print('eval failed "{{%s}}"' % ev)
-            traceback.print_exc()
+            logger.error('eval failed "{{%s}}"' % ev)
+            logger.error(traceback.format_exc())
             raise
 
         if inspect.iscoroutine(eval_result):

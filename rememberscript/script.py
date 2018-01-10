@@ -10,11 +10,14 @@ import os
 import glob
 import yaml
 import asyncio
+import logging
+import traceback
 from typing import Dict, List, Any
 from .storage import StorageType
 from .strings import execute_string, match_trigger
 from .misc import get_list
 
+logger = logging.getLogger('rememberscript')
 
 TRIGGER = '?'
 ENTER_ACTION = '=>+'
@@ -53,7 +56,8 @@ def load_script(dir_path: str, story_name: str, storage: StorageType) -> ScriptT
         try:
             exec(py_data.read(), {'__name__': '__main__'}, storage)
         except:
-            print('py_path: %s' % py_path)
+            logger.error("couldn't load py_path: %s" % py_path)
+            logger.error(traceback.format_exc())
             raise
 
     return script

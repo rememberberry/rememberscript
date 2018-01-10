@@ -1,6 +1,9 @@
 import json
 import pytest
+import logging
 from types import FunctionType
+
+logger = logging.getLogger('rememberscript')
 
 async def assert_replies(replies, *correct, debug_print=False):
     for reply in correct:
@@ -12,6 +15,6 @@ async def assert_replies(replies, *correct, debug_print=False):
         if isinstance(reply, FunctionType):
             assert reply(n), '%s %s' % (n, str(reply))
         if debug_print:
-            print(n)
+            logger.info(n)
     with pytest.raises(StopAsyncIteration):
         await replies.__anext__()
